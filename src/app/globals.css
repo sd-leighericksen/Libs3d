@@ -1,26 +1,129 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --font-sans: "Inter", "SF Pro Display", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  html,
+  body {
+    background: theme(colors.canvas);
+    color: theme(colors.ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "kern" on;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  *:focus-visible {
+    outline: 2px solid theme(colors.accent-magenta);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: theme(colors.accent-magenta);
+    color: theme(colors.canvas);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer components {
+  .container-content {
+    width: 100%;
+    max-width: 1120px;
+    margin-inline: auto;
+    padding-inline: theme(spacing.lg);
+  }
+
+  @media (min-width: 960px) {
+    .container-content {
+      padding-inline: theme(spacing.xl);
+    }
+  }
+
+  /* Page header: short eyebrow + headline + lede. Single hierarchy block. */
+  .page-header { @apply max-w-[60ch]; }
+  .page-header > .eyebrow { @apply mb-sm text-accent-magenta; }
+  .page-header > h1 { @apply text-[40px] md:text-[56px] leading-[1.05] tracking-tight font-semibold; }
+  .page-header > p.lede { @apply text-body-lg text-ink/70 mt-md; }
+
+  /* Section break: small magenta tick + heading + subtle subtitle. */
+  .section-head { @apply mb-lg; }
+  .section-head > .tick {
+    @apply inline-block bg-accent-magenta text-canvas text-caption uppercase
+           px-xs py-[2px] rounded-sm mb-xs tracking-wider;
+  }
+  .section-head > h2 { @apply text-[28px] md:text-[32px] leading-tight font-semibold tracking-tight; }
+  .section-head > p { @apply text-body text-ink/70 mt-xs max-w-[60ch]; }
+
+  /* Buttons — pill kept, primary is now magenta. */
+  .pill {
+    @apply inline-flex items-center justify-center rounded-pill text-button
+           transition active:scale-[0.98] whitespace-nowrap;
+  }
+  .pill-primary {
+    @apply pill bg-accent-magenta text-canvas px-lg py-[10px] hover:opacity-90;
+  }
+  .pill-secondary {
+    @apply pill bg-canvas text-ink px-lg py-[10px] border border-hairline hover:bg-surface-soft;
+  }
+  .pill-dark {
+    @apply pill bg-ink text-canvas px-lg py-[10px] hover:opacity-90;
+  }
+  .pill-ghost {
+    @apply pill bg-transparent text-ink px-md py-xs hover:bg-surface-soft;
+  }
+  .pill-tab {
+    @apply pill bg-canvas text-ink px-md py-xs border border-hairline hover:bg-surface-soft;
+  }
+  .pill-tab[aria-selected="true"] {
+    @apply bg-accent-magenta text-canvas border-transparent;
+  }
+
+  .eyebrow {
+    @apply uppercase font-mono text-eyebrow font-semibold tracking-wider;
+  }
+  .caption {
+    @apply uppercase font-mono text-caption tracking-wider;
+  }
+
+  /* Form fields */
+  .field-label {
+    @apply block text-body-sm font-semibold mb-xs text-ink;
+  }
+  .field-input {
+    @apply w-full bg-canvas text-ink rounded-md border border-hairline
+           px-[14px] py-sm text-body
+           focus:border-accent-magenta focus:outline-none focus:ring-2 focus:ring-accent-magenta/30;
+  }
+  .field-textarea { @apply field-input min-h-[120px] resize-y; }
+  .field-help { @apply text-body-sm text-ink/60 mt-xs; }
+  .field-error { @apply text-body-sm text-accent-magenta mt-xs font-medium; }
+
+  .card {
+    @apply bg-canvas rounded-lg border border-hairline p-lg;
+  }
+  .card-soft {
+    @apply bg-surface-soft rounded-lg p-lg;
+  }
+  .card-accent {
+    @apply bg-canvas rounded-lg border-l-[3px] border-accent-magenta
+           border-y border-r border-hairline p-lg;
+  }
+
+  /* Vertical rhythm */
+  .stack-section > * + * { margin-top: theme(spacing.section); }
+  .stack-lg > * + * { margin-top: theme(spacing.lg); }
+  .stack-xl > * + * { margin-top: theme(spacing.xl); }
+
+  /* Status pill (used in order lists, dashboard) */
+  .status {
+    @apply inline-flex items-center gap-xs rounded-pill text-caption uppercase
+           tracking-wider px-sm py-[3px] border border-hairline bg-canvas;
+  }
+  .status[data-tone="alert"] { @apply bg-accent-magenta text-canvas border-transparent; }
+  .status[data-tone="info"] { @apply bg-surface-soft text-ink; }
+  .status[data-tone="ok"] { @apply bg-ink text-canvas border-transparent; }
 }

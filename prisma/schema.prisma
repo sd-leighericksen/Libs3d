@@ -1,0 +1,155 @@
+// Kids-for-Kids 3D Print Store schema.
+// Snapshots of product title + unit price live on OrderItem so edits to
+// products don't rewrite historical orders.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderState {
+  pending_review
+  approved
+  paid
+  in_production
+  fulfilled
+  completed
+  rejected
+  cancelled
+  payment_failed
+}
+
+enum DeliveryMethod {
+  collect
+  deliver
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  events OrderEvent[]
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  imageUrl    String?
+  sortOrder   Int       @default(0)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  products Product[]
+}
+
+model Product {
+  id                String    @id @default(cuid())
+  slug              String    @unique
+  title             String
+  description       String    @default("")
+  priceCents        Int
+  categoryId        String
+  category          Category  @relation(fields: [categoryId], references: [id])
+  previewStlUrl     String?
+  productionStlKey  String?
+  available         Boolean   @default(true)
+  maxQtyPerOrder    Int?
+  archivedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  images    ProductImage[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  sortOrder Int     @default(0)
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  sessionId String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id                    String         @id @default(cuid())
+  token                 String         @unique
+  paymentToken          String         @unique
+  state                 OrderState     @default(pending_review)
+  buyerFirstName        String
+  parentFirstName       String
+  parentEmail           String
+  deliveryMethod        DeliveryMethod
+  deliveryAddress       String?
+  note                  String?
+  totalCents            Int
+  stripeSessionId       String?
+  stripePaymentIntentId String?
+  paymentLinkExpiresAt  DateTime?
+  reminderSentAt        DateTime?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  items  OrderItem[]
+  events OrderEvent[]
+}
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  orderId         String
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  titleSnapshot   String
+  unitPriceCents  Int
+  quantity        Int
+}
+
+model OrderEvent {
+  id             String      @id @default(cuid())
+  orderId        String
+  order          Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromState      OrderState?
+  toState        OrderState
+  actorAdminId   String?
+  actorAdmin     AdminUser?  @relation(fields: [actorAdminId], references: [id])
+  reason         String?
+  createdAt      DateTime    @default(now())
+}
+
+// Singleton store settings; row id is always "singleton".
+model Settings {
+  id                       String  @id @default("singleton")
+  maxQtyPerLineItem        Int     @default(5)
+  maxDistinctItemsPerOrder Int     @default(10)
+  storeName                String  @default("Libs3d")
+  storeContactEmail        String  @default("hello@example.com")
+}
