@@ -2,6 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { PillLink } from "@/components/ui/Pill";
 import { formatAud } from "@/lib/money";
+import { Reveal } from "@/components/motion/Reveal";
+import { Magnetic } from "@/components/motion/Magnetic";
+import { Hero } from "@/components/Hero";
 
 export default async function HomePage() {
   const [featured, categories] = await Promise.all([
@@ -17,67 +20,38 @@ export default async function HomePage() {
     }),
   ]);
 
-  return (
-    <div className="container-content py-xxl stack-section">
-      {/* Hero */}
-      <section className="grid md:grid-cols-12 gap-xl items-center">
-        <div className="md:col-span-7 page-header">
-          <div className="eyebrow">Libs3d</div>
-          <h1>Small 3D-printed things, made by a kid.</h1>
-          <p className="lede">
-            Pick what you like. Your grown-up gets an email to say yes and pay.
-            Then we print it.
-          </p>
-          <div className="flex flex-wrap gap-sm mt-lg">
-            <PillLink href="#shop">Browse the shop</PillLink>
-            <PillLink href="/how-it-works" variant="secondary">
-              How it works
-            </PillLink>
-          </div>
-        </div>
-        <div className="md:col-span-5">
-          <div className="card-soft aspect-[4/3] flex items-center justify-center">
-            {featured[0]?.images[0] ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={featured[0].images[0].url}
-                alt={featured[0].images[0].alt}
-                className="w-full h-full object-cover rounded-md"
-              />
-            ) : (
-              <div className="text-body-sm text-ink/60">Hero image</div>
-            )}
-          </div>
-        </div>
-      </section>
+  const heroImages = featured.flatMap((p) =>
+    p.images[0] ? [{ url: p.images[0].url, alt: p.images[0].alt }] : [],
+  );
 
+  return (
+    <>
+      {/* Full-bleed GSAP hero */}
+      <Hero images={heroImages} />
+
+      <div className="container-content py-section stack-section">
       {/* Featured products */}
-      <section id="shop">
-        <div className="section-head flex flex-wrap items-end justify-between gap-md">
-          <div>
-            <span className="tick">Shop</span>
-            <h2>Latest stuff</h2>
-            <p>Fresh out of the printer.</p>
-          </div>
-          {categories.length > 0 && (
+      <section id="shop" className="scroll-mt-28">
+        {categories.length > 0 && (
+          <div className="mb-lg flex justify-end">
             <Link
               href={`/category/${categories[0].slug}`}
               className="text-link text-accent-magenta underline-offset-4 hover:underline"
             >
               See all →
             </Link>
-          )}
-        </div>
+          </div>
+        )}
 
         {featured.length === 0 ? (
           <p className="text-body">Nothing in the shop yet — check back soon.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-md">
+          <Reveal stagger as="div" className="grid grid-cols-2 md:grid-cols-3 gap-md">
             {featured.map((p) => (
               <Link
                 key={p.id}
                 href={`/product/${p.slug}`}
-                className="group block rounded-lg border border-hairline bg-canvas overflow-hidden hover:border-accent-magenta transition-colors"
+                className="group block rounded-lg border border-hairline bg-canvas overflow-hidden transition-colors transition-transform duration-300 hover:border-accent-magenta hover:-translate-y-1"
               >
                 <div className="aspect-square bg-surface-soft overflow-hidden">
                   {p.images[0] && (
@@ -97,7 +71,7 @@ export default async function HomePage() {
                 </div>
               </Link>
             ))}
-          </div>
+          </Reveal>
         )}
       </section>
 
@@ -108,12 +82,12 @@ export default async function HomePage() {
             <span className="tick">Browse</span>
             <h2>By category</h2>
           </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-md">
+          <Reveal stagger as="div" className="grid sm:grid-cols-2 md:grid-cols-3 gap-md">
             {categories.map((c) => (
               <Link
                 key={c.id}
                 href={`/category/${c.slug}`}
-                className="card flex items-center justify-between hover:border-accent-magenta transition-colors"
+                className="card group flex items-center justify-between transition-colors hover:border-accent-magenta"
               >
                 <div>
                   <div className="text-card-title">{c.name}</div>
@@ -123,15 +97,17 @@ export default async function HomePage() {
                     </div>
                   )}
                 </div>
-                <span className="text-accent-magenta text-headline">→</span>
+                <span className="text-accent-magenta text-headline transition-transform duration-300 group-hover:translate-x-1">
+                  →
+                </span>
               </Link>
             ))}
-          </div>
+          </Reveal>
         </section>
       )}
 
       {/* How it works strip */}
-      <section className="card-accent">
+      <Reveal as="section" className="card-accent">
         <span className="tick">How it works</span>
         <h2 className="text-headline mt-xs">
           Kids choose. Grown-ups say yes. Then we print.
@@ -141,11 +117,14 @@ export default async function HomePage() {
           anything goes to the printer. No surprise bills, no surprise boxes.
         </p>
         <div className="mt-md">
-          <PillLink href="/how-it-works" variant="primary">
-            Read the short version
-          </PillLink>
+          <Magnetic strength={0.4}>
+            <PillLink href="/how-it-works" variant="primary">
+              Read the short version
+            </PillLink>
+          </Magnetic>
         </div>
-      </section>
-    </div>
+      </Reveal>
+      </div>
+    </>
   );
 }

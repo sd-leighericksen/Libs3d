@@ -6,9 +6,9 @@ export function Footer() {
       <div className="container-content py-xxl grid sm:grid-cols-4 gap-xl">
         <div className="sm:col-span-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.svg" alt="Libs3d" className="h-8 w-auto mb-md" />
+          <img src="/logo.png" alt="Libs3d" className="h-20 w-auto mb-md" />
           <p className="text-body-sm text-ink/70 max-w-[36ch]">
-            A small 3D-print shop run by a kid, for kids. Every order goes
+            A small 3D-print shop run by Baxter E. Every order goes
             through a grown-up before a thing gets printed.
           </p>
         </div>
@@ -25,7 +25,7 @@ export function Footer() {
       </div>
       <div className="container-content border-t border-hairline py-md flex justify-between text-caption text-ink/60">
         <span>© Libs3d</span>
-        <span>Made with care</span>
+        <span>Built by Baxter E</span>
       </div>
     </footer>
   );

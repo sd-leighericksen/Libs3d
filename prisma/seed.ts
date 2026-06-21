@@ -209,7 +209,44 @@ async function main() {
     data: { productId: fidget.id, url: imgUrl, alt: "Fidget cube", sortOrder: 0 },
   });
 
-  console.log("Seeded categories, products, and starter admin.");
+  // Shared colour palette (idempotent by unique name).
+  const palette = [
+    { name: "Galaxy Purple", hex: "#5b2a86" },
+    { name: "Lava Red", hex: "#e23b2e" },
+    { name: "Ocean Blue", hex: "#1f6feb" },
+    { name: "Slime Green", hex: "#3fb950" },
+    { name: "Sunshine Yellow", hex: "#f2c200" },
+    { name: "Bubblegum Pink", hex: "#ff5da2" },
+    { name: "Midnight Black", hex: "#101012" },
+    { name: "Cloud White", hex: "#f5f5f3" },
+  ];
+  for (const [i, c] of palette.entries()) {
+    await prisma.colorOption.upsert({
+      where: { name: c.name },
+      update: { hex: c.hex },
+      create: { name: c.name, hex: c.hex, sortOrder: i * 10 },
+    });
+  }
+
+  // Give the fidget cube two example options if it has none yet.
+  const fidgetOptions = await prisma.productOption.count({
+    where: { productId: fidget.id },
+  });
+  if (fidgetOptions === 0) {
+    await prisma.productOption.createMany({
+      data: [
+        { productId: fidget.id, label: "Base colour", slots: 1, sortOrder: 0 },
+        {
+          productId: fidget.id,
+          label: "Keystone colours",
+          slots: 9,
+          sortOrder: 10,
+        },
+      ],
+    });
+  }
+
+  console.log("Seeded categories, products, colours, options, and starter admin.");
 }
 
 main()

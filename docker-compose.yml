@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: libs3d-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kidsforkids_db
+      POSTGRES_USER: libs3d
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  libs3d:
+    build: .
+    container_name: libs3d
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    ports:
+      - "3001:3000"
+    volumes:
+      - storage_data:/app/storage
+    env_file:
+      - .env
+
+volumes:
+  postgres_data:
+  storage_data:

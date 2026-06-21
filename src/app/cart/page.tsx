@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCart, setQuantity, removeFromCart } from "@/lib/cart";
 import { formatAud } from "@/lib/money";
 import { PillLink } from "@/components/ui/Pill";
+import { SelectionSummary } from "@/components/SelectionSummary";
 import { getCartLimits, effectivePerItemMax } from "@/lib/limits";
 
 export default async function CartPage() {
@@ -42,17 +43,23 @@ export default async function CartPage() {
             );
             return (
               <li key={item.id} className="py-md flex flex-wrap items-center gap-md">
-                <Link
-                  href={`/product/${item.product.slug}`}
-                  className="text-body font-semibold flex-1 min-w-[12ch]"
-                >
-                  {item.product.title}
-                </Link>
+                <div className="flex-1 min-w-[12ch]">
+                  <Link
+                    href={`/product/${item.product.slug}`}
+                    className="text-body font-semibold"
+                  >
+                    {item.product.title}
+                  </Link>
+                  <SelectionSummary
+                    selections={item.selections}
+                    className="mt-xs flex flex-col gap-xxs"
+                  />
+                </div>
                 <div className="text-body-sm text-ink/60 whitespace-nowrap">
                   {formatAud(item.product.priceCents)} each
                 </div>
                 <form action={setQuantity} className="flex items-center gap-xs">
-                  <input type="hidden" name="productId" value={item.productId} />
+                  <input type="hidden" name="itemId" value={item.id} />
                   <input
                     name="quantity"
                     type="number"
@@ -66,7 +73,7 @@ export default async function CartPage() {
                   </button>
                 </form>
                 <form action={removeFromCart}>
-                  <input type="hidden" name="productId" value={item.productId} />
+                  <input type="hidden" name="itemId" value={item.id} />
                   <button className="text-body-sm text-ink/60 underline" type="submit">
                     Remove
                   </button>

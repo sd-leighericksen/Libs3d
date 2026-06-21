@@ -16,7 +16,7 @@ const checkoutSchema = z.object({
   buyerFirstName: z.string().min(1).max(40),
   parentFirstName: z.string().min(1).max(60),
   parentEmail: z.string().email().max(120),
-  deliveryMethod: z.enum(["collect", "deliver"]),
+  deliveryMethod: z.enum(["collect", "deliver"]).default("collect"),
   deliveryAddress: z.string().max(400).optional().or(z.literal("")),
   note: z.string().max(800).optional().or(z.literal("")),
 });
@@ -33,9 +33,7 @@ export async function submitCheckout(formData: FormData) {
   }
 
   const parsed = checkoutSchema.parse(Object.fromEntries(formData));
-  if (parsed.deliveryMethod === "deliver" && !parsed.deliveryAddress) {
-    throw new Error("Pop in a delivery address, please.");
-  }
+
 
   const limits = await getCartLimits();
   const settings = await getSettings();
@@ -63,6 +61,11 @@ export async function submitCheckout(formData: FormData) {
     titleSnapshot: i.product.title,
     unitPriceCents: i.product.priceCents,
     quantity: i.quantity,
+    // Carry the chosen-options snapshot straight through to the order line.
+    selections:
+      i.selections === null
+        ? undefined
+        : (i.selections as Prisma.InputJsonValue),
   }));
   const totalCents = items.reduce(
     (s, i) => s + i.unitPriceCents * i.quantity,

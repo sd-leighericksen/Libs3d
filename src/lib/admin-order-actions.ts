@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { requireAdmin } from "./auth";
+import { logActivity } from "./activity";
 import { assertTransition } from "./order-state";
 import { sendEmail } from "./email";
 import { makeToken } from "./tokens";
@@ -25,11 +26,11 @@ async function transition(
     data?: Prisma.OrderUpdateInput;
   },
 ) {
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const o = await tx.order.findUnique({ where: { id: orderId } });
     if (!o) throw new Error("Order not found");
     assertTransition(o.state, toState);
-    const updated = await tx.order.update({
+    const result = await tx.order.update({
       where: { id: orderId },
       data: { ...opts.data, state: toState },
       include: { items: true },
@@ -43,8 +44,19 @@ async function transition(
         reason: opts.reason,
       },
     });
-    return updated;
+    return result;
   });
+
+  const actor = await prisma.adminUser.findUnique({
+    where: { id: opts.adminId },
+  });
+  await logActivity({
+    actorId: opts.adminId,
+    actorName: actor?.username ?? "system",
+    action: `order.${toState}`,
+    summary: `${actor?.username ?? "Someone"} moved ${updated.buyerFirstName}'s order to "${toState}"`,
+  });
+  return updated;
 }
 
 export async function approveOrder(formData: FormData) {

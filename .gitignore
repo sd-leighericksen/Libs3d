@@ -42,3 +42,8 @@ next-env.d.ts
 
 # local-only storage (filesystem adapter for dev)
 /storage
+
+# Local agent tooling (skills install)
+.agents/
+.claude/
+skills-lock.json

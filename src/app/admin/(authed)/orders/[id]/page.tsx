@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { formatAud } from "@/lib/money";
 import { STATE_LABEL } from "@/lib/order-state";
+import { SelectionSummary } from "@/components/SelectionSummary";
 import {
   approveOrder,
   rejectOrder,
@@ -53,8 +54,14 @@ export default async function AdminOrderDetail({
               <li key={i.id} className="py-sm flex justify-between gap-md text-body">
                 <span>
                   {i.quantity} × {i.titleSnapshot}
+                  <SelectionSummary
+                    selections={i.selections}
+                    className="mt-xxs flex flex-col gap-xxs"
+                  />
                 </span>
-                <span>{formatAud(i.unitPriceCents * i.quantity)}</span>
+                <span className="whitespace-nowrap">
+                  {formatAud(i.unitPriceCents * i.quantity)}
+                </span>
               </li>
             ))}
           </ul>
@@ -83,9 +90,7 @@ export default async function AdminOrderDetail({
           </p>
           <div className="caption text-ink/60 mt-md mb-xs">Delivery</div>
           <p className="text-body-sm whitespace-pre-wrap">
-            {order.deliveryMethod === "collect"
-              ? "Collect at school"
-              : order.deliveryAddress || "(no address!)"}
+            Pickup — Delacombe
           </p>
           <div className="caption text-ink/60 mt-md mb-xs">Buyer status link</div>
           <a className="text-body-sm underline break-all" href={buyerLink}>

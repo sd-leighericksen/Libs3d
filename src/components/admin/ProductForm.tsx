@@ -1,21 +1,43 @@
-import type { Category, Product, ProductImage } from "@prisma/client";
+import type {
+  Category,
+  ColorOption,
+  Product,
+  ProductImage,
+  ProductOption,
+} from "@prisma/client";
+
+type OptionWithColors = ProductOption & { allowedColors: ColorOption[] };
 
 type Props = {
   action: (formData: FormData) => Promise<void>;
   categories: Category[];
   product?: Product & { images: ProductImage[] };
+  options?: OptionWithColors[];
+  /** Full available colour palette, for the per-option allow-list. */
+  palette?: ColorOption[];
   archiveAction?: (formData: FormData) => Promise<void>;
   unarchiveAction?: (formData: FormData) => Promise<void>;
   deleteImageAction?: (formData: FormData) => Promise<void>;
+  addOptionAction?: (formData: FormData) => Promise<void>;
+  deleteOptionAction?: (formData: FormData) => Promise<void>;
+  setOptionColorsAction?: (formData: FormData) => Promise<void>;
+  /** Admin-only hard delete; omit for shopkeepers. */
+  deleteAction?: (formData: FormData) => Promise<void>;
 };
 
 export function ProductForm({
   action,
   categories,
   product,
+  options = [],
+  palette = [],
   archiveAction,
   unarchiveAction,
   deleteImageAction,
+  addOptionAction,
+  deleteOptionAction,
+  setOptionColorsAction,
+  deleteAction,
 }: Props) {
   return (
     <div className="flex flex-col gap-xl">
@@ -187,19 +209,194 @@ export function ProductForm({
             </section>
           )}
 
-          {archiveAction && unarchiveAction && (
-            <form action={product.archivedAt ? unarchiveAction : archiveAction}>
-              <input type="hidden" name="id" value={product.id} />
-              <button
-                type="submit"
-                className="pill-secondary text-body-sm border border-hairline"
+          {addOptionAction && deleteOptionAction && (
+            <section>
+              <h3 className="text-headline mb-xs">Product options</h3>
+              <p className="field-help mb-md">
+                Buyer-chosen colours, picked from the shared{" "}
+                <a href="/admin/colors" className="underline">
+                  Colours palette
+                </a>
+                . Use <strong>slots</strong> for repeated picks — e.g. a
+                keystone-colours option with 9 slots shows nine colour pickers.
+              </p>
+
+              {options.length > 0 && (
+                <ul className="divide-y divide-hairline-soft border-y border-hairline-soft mb-md">
+                  {options.map((o) => {
+                    const allowedIds = new Set(o.allowedColors.map((c) => c.id));
+                    return (
+                      <li key={o.id} className="py-md flex flex-col gap-sm">
+                        <div className="flex items-center justify-between gap-md">
+                          <div>
+                            <span className="text-body font-semibold">{o.label}</span>
+                            <span className="text-body-sm text-ink/60">
+                              {" "}
+                              · {o.slots} {o.slots === 1 ? "slot" : "slots"} ·{" "}
+                              {o.required ? "required" : "optional"} ·{" "}
+                              {allowedIds.size === 0
+                                ? "all colours"
+                                : `${allowedIds.size} colour${allowedIds.size === 1 ? "" : "s"}`}
+                            </span>
+                          </div>
+                          <form action={deleteOptionAction}>
+                            <input type="hidden" name="id" value={o.id} />
+                            <button type="submit" className="text-body-sm underline">
+                              Remove
+                            </button>
+                          </form>
+                        </div>
+
+                        {setOptionColorsAction && palette.length > 0 && (
+                          <details className="text-body-sm">
+                            <summary className="cursor-pointer text-ink/70">
+                              Limit colours
+                            </summary>
+                            <form
+                              action={setOptionColorsAction}
+                              className="mt-sm flex flex-col gap-sm"
+                            >
+                              <input type="hidden" name="optionId" value={o.id} />
+                              <PaletteChecks
+                                palette={palette}
+                                selectedIds={allowedIds}
+                              />
+                              <p className="field-help">
+                                None ticked = every available colour is allowed.
+                              </p>
+                              <div>
+                                <button
+                                  type="submit"
+                                  className="pill-secondary text-body-sm"
+                                >
+                                  Save colours
+                                </button>
+                              </div>
+                            </form>
+                          </details>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              <form
+                action={addOptionAction}
+                className="flex flex-col gap-md border-t border-hairline-soft pt-md"
               >
-                {product.archivedAt ? "Unarchive" : "Archive product"}
-              </button>
-            </form>
+                <input type="hidden" name="productId" value={product.id} />
+                <div className="grid sm:grid-cols-4 gap-md items-end">
+                  <div className="sm:col-span-2">
+                    <label className="field-label">Label</label>
+                    <input
+                      name="label"
+                      required
+                      placeholder="Base colour"
+                      className="field-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="field-label">Slots</label>
+                    <input
+                      name="slots"
+                      type="number"
+                      min={1}
+                      max={20}
+                      defaultValue={1}
+                      className="field-input"
+                    />
+                  </div>
+                  <label className="inline-flex items-center gap-sm h-[46px]">
+                    <input
+                      type="checkbox"
+                      name="required"
+                      value="true"
+                      defaultChecked
+                      className="h-5 w-5"
+                    />
+                    <span className="text-body-sm">Required</span>
+                  </label>
+                </div>
+                {palette.length > 0 && (
+                  <div>
+                    <label className="field-label">Allowed colours</label>
+                    <PaletteChecks palette={palette} selectedIds={new Set()} />
+                    <p className="field-help">
+                      Leave all unticked to allow every colour.
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <button type="submit" className="pill-secondary text-body-sm">
+                    Add option
+                  </button>
+                </div>
+              </form>
+            </section>
           )}
+
+          <div className="flex flex-wrap items-center gap-md border-t border-hairline pt-lg">
+            {archiveAction && unarchiveAction && (
+              <form action={product.archivedAt ? unarchiveAction : archiveAction}>
+                <input type="hidden" name="id" value={product.id} />
+                <button
+                  type="submit"
+                  className="pill-secondary text-body-sm border border-hairline"
+                >
+                  {product.archivedAt ? "Unarchive" : "Archive product"}
+                </button>
+              </form>
+            )}
+            {deleteAction && (
+              <form action={deleteAction} className="flex items-center gap-sm">
+                <input type="hidden" name="id" value={product.id} />
+                <button
+                  type="submit"
+                  className="pill text-canvas bg-accent-magenta px-lg py-[10px] text-body-sm"
+                >
+                  Delete permanently
+                </button>
+                <span className="field-help">
+                  Can&rsquo;t be undone. Blocked if it&rsquo;s on past orders —
+                  archive those instead.
+                </span>
+              </form>
+            )}
+          </div>
         </>
       )}
+    </div>
+  );
+}
+
+/** Checkbox grid of palette colours; ticked ones are pre-selected. */
+function PaletteChecks({
+  palette,
+  selectedIds,
+}: {
+  palette: ColorOption[];
+  selectedIds: Set<string>;
+}) {
+  return (
+    <div className="mt-xs grid grid-cols-2 sm:grid-cols-3 gap-x-md gap-y-xs">
+      {palette.map((c) => (
+        <label key={c.id} className="inline-flex items-center gap-xs text-body-sm">
+          <input
+            type="checkbox"
+            name="allowedColorIds"
+            value={c.id}
+            defaultChecked={selectedIds.has(c.id)}
+            className="h-4 w-4"
+          />
+          <span
+            aria-hidden
+            className="inline-block h-3 w-3 rounded-full border border-hairline"
+            style={{ background: c.hex }}
+          />
+          {c.name}
+        </label>
+      ))}
     </div>
   );
 }

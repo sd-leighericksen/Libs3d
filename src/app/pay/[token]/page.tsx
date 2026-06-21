@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { formatAud } from "@/lib/money";
 import { startPayment } from "@/lib/payment-actions";
 import { stripeEnabled } from "@/lib/stripe";
+import { SelectionSummary } from "@/components/SelectionSummary";
 
 export default async function PayPage({
   params,
@@ -67,9 +68,7 @@ export default async function PayPage({
         <div className="card">
           <div className="caption text-ink/60 mb-sm">Delivery</div>
           <p className="text-body whitespace-pre-wrap">
-            {order.deliveryMethod === "collect"
-              ? "Collect at school"
-              : order.deliveryAddress}
+            Pickup — Delacombe. We&rsquo;ll send pickup instructions once it&rsquo;s ready.
           </p>
         </div>
 
@@ -99,8 +98,14 @@ export default async function PayPage({
               <li key={i.id} className="py-xs flex justify-between gap-md">
                 <span>
                   {i.quantity} × {i.titleSnapshot}
+                  <SelectionSummary
+                    selections={i.selections}
+                    className="mt-xxs flex flex-col gap-xxs"
+                  />
                 </span>
-                <span>{formatAud(i.unitPriceCents * i.quantity)}</span>
+                <span className="whitespace-nowrap">
+                  {formatAud(i.unitPriceCents * i.quantity)}
+                </span>
               </li>
             ))}
           </ul>

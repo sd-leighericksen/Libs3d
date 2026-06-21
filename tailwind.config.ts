@@ -15,7 +15,9 @@ export default {
         "surface-soft": "#f5f5f3",
         hairline: "#e6e6e3",
         "hairline-soft": "#efefec",
-        "accent-magenta": "#ff2d6d",
+        // Driven by --accent-rgb (set from Settings.accentColor in the root
+        // layout). RGB channels + <alpha-value> so /opacity modifiers still work.
+        "accent-magenta": "rgb(var(--accent-rgb) / <alpha-value>)",
         success: "#13a05a",
         "block-lime": "#d9f24a",
         "block-lilac": "#d7c8ff",
@@ -51,7 +53,7 @@ export default {
         subhead: ["26px", { lineHeight: "1.35", letterSpacing: "-0.26px", fontWeight: "340" }],
         "card-title": ["24px", { lineHeight: "1.45", letterSpacing: "0", fontWeight: "700" }],
         "body-lg": ["20px", { lineHeight: "1.40", letterSpacing: "-0.14px", fontWeight: "330" }],
-        body: ["18px", { lineHeight: "1.45", letterSpacing: "-0.26px", fontWeight: "320" }],
+        body: ["18px", { lineHeight: "1.45", letterSpacing: "-0.26px", fontWeight: "400" }],
         "body-sm": ["16px", { lineHeight: "1.45", letterSpacing: "-0.14px", fontWeight: "330" }],
         link: ["20px", { lineHeight: "1.40", letterSpacing: "-0.10px", fontWeight: "480" }],
         button: ["20px", { lineHeight: "1.40", letterSpacing: "-0.10px", fontWeight: "480" }],

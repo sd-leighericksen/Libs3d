@@ -4,8 +4,11 @@ import ReactMarkdown from "react-markdown";
 import { prisma } from "@/lib/db";
 import { formatAud } from "@/lib/money";
 import { addToCart } from "@/lib/cart";
-import { getCartLimits, effectivePerItemMax } from "@/lib/limits";
 import { StlViewerLoader } from "@/components/StlViewerLoader";
+import { Reveal } from "@/components/motion/Reveal";
+import { AnimatedHeadline } from "@/components/motion/AnimatedHeadline";
+import { ColorChips } from "@/components/ColorChips";
+import { optionFieldName } from "@/lib/product-options";
 
 export default async function ProductPage({
   params,
@@ -18,15 +21,29 @@ export default async function ProductPage({
     include: {
       images: { orderBy: { sortOrder: "asc" } },
       category: true,
+      options: {
+        orderBy: { sortOrder: "asc" },
+        include: {
+          allowedColors: {
+            where: { available: true, archivedAt: null },
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+          },
+        },
+      },
     },
   });
   if (!product || product.archivedAt) notFound();
 
-  const limits = await getCartLimits();
-  const cap = effectivePerItemMax(
-    limits.maxQtyPerLineItem,
-    product.maxQtyPerOrder,
-  );
+  // Full available palette — used as the fallback for options that don't
+  // restrict their colours.
+  const allColors =
+    product.options.length > 0
+      ? await prisma.colorOption.findMany({
+          where: { available: true, archivedAt: null },
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        })
+      : [];
+
 
   return (
     <div className="container-content py-xxl">
@@ -80,11 +97,14 @@ export default async function ProductPage({
         </div>
 
         {/* Details column */}
-        <div className="md:col-span-5">
+        <Reveal as="div" className="md:col-span-5" y={20}>
           <div className="caption text-ink/60 mb-xs">{product.category.name}</div>
-          <h1 className="text-[36px] md:text-[44px] leading-tight font-semibold tracking-tight">
-            {product.title}
-          </h1>
+          <AnimatedHeadline
+            text={product.title}
+            by="words"
+            delay={0.05}
+            className="text-[36px] md:text-[44px] leading-tight font-semibold tracking-tight"
+          />
           <div className="mt-md flex items-baseline gap-sm">
             <span className="text-[28px] font-semibold text-accent-magenta">
               {formatAud(product.priceCents)}
@@ -103,26 +123,49 @@ export default async function ProductPage({
               This one&rsquo;s on a little break — back soon.
             </p>
           ) : (
-            <form action={addToCart} className="mt-xl card flex flex-wrap items-end gap-md">
+            <form action={addToCart} className="mt-xl card flex flex-col gap-lg">
               <input type="hidden" name="productId" value={product.id} />
+
+              {product.options.map((option) => {
+                // Restricted palette for this option, or the whole one.
+                const optColors =
+                  option.allowedColors.length > 0
+                    ? option.allowedColors
+                    : allColors;
+                return (
+                  <fieldset key={option.id} className="flex flex-col gap-sm">
+                    <legend className="field-label mb-xs">
+                      {option.label}
+                      {option.required && (
+                        <span className="text-accent-magenta"> *</span>
+                      )}
+                    </legend>
+                    <div className="flex flex-col gap-md">
+                      {Array.from({ length: option.slots }).map((_, i) => (
+                        <div key={i} className="flex flex-col gap-xs">
+                          {option.slots > 1 && (
+                            <span className="caption text-ink/60">
+                              {option.label} {i + 1}
+                            </span>
+                          )}
+                          <ColorChips
+                            name={optionFieldName(option.id, i)}
+                            colors={optColors}
+                            required={option.required}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </fieldset>
+                );
+              })}
+
+              {/* Quantity is always 1 here; adjust in the cart if needed. */}
               <div>
-                <label className="field-label" htmlFor="quantity">
-                  How many?
-                </label>
-                <input
-                  id="quantity"
-                  name="quantity"
-                  type="number"
-                  defaultValue={1}
-                  min={1}
-                  max={cap}
-                  className="field-input w-24"
-                />
-                <p className="field-help">Up to {cap} of this one.</p>
+                <button type="submit" className="pill-primary">
+                  Add to cart
+                </button>
               </div>
-              <button type="submit" className="pill-primary">
-                Add to cart
-              </button>
             </form>
           )}
 
@@ -133,7 +176,7 @@ export default async function ProductPage({
               pay. Nothing is asked, charged, or made until they have.
             </p>
           </div>
-        </div>
+        </Reveal>
       </div>
     </div>
   );

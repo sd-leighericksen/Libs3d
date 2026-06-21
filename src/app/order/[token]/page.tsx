@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { STATE_LABEL } from "@/lib/order-state";
 import { formatAud } from "@/lib/money";
+import { SelectionSummary } from "@/components/SelectionSummary";
 
 export default async function OrderStatusPage({
   params,
@@ -20,10 +21,7 @@ export default async function OrderStatusPage({
     approved: "Now waiting on your grown-up to pay.",
     paid: "Paid — we&rsquo;re getting it ready.",
     in_production: "We&rsquo;re printing it now.",
-    fulfilled:
-      order.deliveryMethod === "collect"
-        ? "Ready to collect at school."
-        : "On its way to you.",
+    fulfilled: "Ready to collect in Delacombe.",
     completed: "All done. Thanks!",
     rejected: "This one couldn&rsquo;t go ahead.",
     cancelled: "This order was cancelled.",
@@ -61,8 +59,14 @@ export default async function OrderStatusPage({
             <li key={i.id} className="py-xs flex justify-between gap-md text-body">
               <span>
                 {i.quantity} × {i.titleSnapshot}
+                <SelectionSummary
+                  selections={i.selections}
+                  className="mt-xxs flex flex-col gap-xxs"
+                />
               </span>
-              <span>{formatAud(i.unitPriceCents * i.quantity)}</span>
+              <span className="whitespace-nowrap">
+                {formatAud(i.unitPriceCents * i.quantity)}
+              </span>
             </li>
           ))}
         </ul>

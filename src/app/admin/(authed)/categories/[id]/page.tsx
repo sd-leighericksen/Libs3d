@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
+import { requireRole } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 async function saveCategory(formData: FormData) {
   "use server";
@@ -17,14 +19,42 @@ async function saveCategory(formData: FormData) {
   redirect("/admin/categories");
 }
 
+async function deleteCategory(formData: FormData) {
+  "use server";
+  const me = await requireRole("admin");
+  if (!me) throw new Error("Only admins can delete categories.");
+  const id = String(formData.get("id"));
+  const productCount = await prisma.product.count({ where: { categoryId: id } });
+  if (productCount > 0) {
+    throw new Error(
+      "This category still has products. Move or delete them first, or archive the category.",
+    );
+  }
+  const category = await prisma.category.findUnique({ where: { id } });
+  await prisma.category.delete({ where: { id } });
+  await logActivity({
+    actorId: me.id,
+    actorName: me.username,
+    action: "category.delete",
+    summary: `${me.username} deleted category "${category?.name ?? id}"`,
+  });
+  revalidatePath("/admin/categories");
+  revalidatePath("/");
+  redirect("/admin/categories");
+}
+
 export default async function EditCategory({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const c = await prisma.category.findUnique({ where: { id } });
+  const c = await prisma.category.findUnique({
+    where: { id },
+    include: { _count: { select: { products: true } } },
+  });
   if (!c) notFound();
+  const isAdmin = (await requireRole("admin")) !== null;
 
   return (
     <div className="max-w-xl">
@@ -53,6 +83,26 @@ export default async function EditCategory({
           <button className="pill-primary" type="submit">Save</button>
         </div>
       </form>
+
+      {isAdmin && (
+        <form
+          action={deleteCategory}
+          className="mt-xl border-t border-hairline pt-lg flex items-center gap-sm flex-wrap"
+        >
+          <input type="hidden" name="id" value={c.id} />
+          <button
+            type="submit"
+            className="pill text-canvas bg-accent-magenta px-lg py-[10px] text-body-sm"
+          >
+            Delete category
+          </button>
+          <span className="field-help">
+            {c._count.products > 0
+              ? `Has ${c._count.products} product${c._count.products === 1 ? "" : "s"} — move or remove them first.`
+              : "Permanent. Can’t be undone."}
+          </span>
+        </form>
+      )}
     </div>
   );
 }

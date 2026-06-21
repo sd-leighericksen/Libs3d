@@ -7,7 +7,8 @@ import { prisma } from "./db";
 import { slugify } from "./slug";
 import { putObject } from "./storage";
 import { makeToken } from "./tokens";
-import { requireAdmin } from "./auth";
+import { requireAdmin, requireRole } from "./auth";
+import { logActivity } from "./activity";
 
 const MAX_PREVIEW_STL = 4 * 1024 * 1024; // 4 MB
 const MAX_PROD_STL = 80 * 1024 * 1024; // 80 MB
@@ -53,7 +54,8 @@ async function uploadIfPresent(
 }
 
 export async function createProduct(formData: FormData) {
-  if (!(await requireAdmin())) throw new Error("Not authorized");
+  const me = await requireAdmin();
+  if (!me) throw new Error("Not authorized");
 
   const parsed = baseFields.parse(Object.fromEntries(formData));
 
@@ -100,13 +102,21 @@ export async function createProduct(formData: FormData) {
     }
   }
 
+  await logActivity({
+    actorId: me.id,
+    actorName: me.username,
+    action: "product.create",
+    summary: `${me.username} created product "${product.title}"`,
+  });
+
   revalidatePath("/admin/products");
   revalidatePath("/");
   redirect(`/admin/products/${product.id}`);
 }
 
 export async function updateProduct(formData: FormData) {
-  if (!(await requireAdmin())) throw new Error("Not authorized");
+  const me = await requireAdmin();
+  if (!me) throw new Error("Not authorized");
 
   const id = String(formData.get("id"));
   const parsed = baseFields.parse(Object.fromEntries(formData));
@@ -159,17 +169,31 @@ export async function updateProduct(formData: FormData) {
     }
   }
 
+  await logActivity({
+    actorId: me.id,
+    actorName: me.username,
+    action: "product.update",
+    summary: `${me.username} updated product "${parsed.title}"`,
+  });
+
   revalidatePath("/admin/products");
   revalidatePath(`/product/${slug}`);
   revalidatePath("/");
 }
 
 export async function archiveProduct(formData: FormData) {
-  if (!(await requireAdmin())) throw new Error("Not authorized");
+  const me = await requireAdmin();
+  if (!me) throw new Error("Not authorized");
   const id = String(formData.get("id"));
-  await prisma.product.update({
+  const product = await prisma.product.update({
     where: { id },
     data: { archivedAt: new Date(), available: false },
+  });
+  await logActivity({
+    actorId: me.id,
+    actorName: me.username,
+    action: "product.archive",
+    summary: `${me.username} archived product "${product.title}"`,
   });
   revalidatePath("/admin/products");
   revalidatePath("/");
@@ -185,9 +209,105 @@ export async function unarchiveProduct(formData: FormData) {
   revalidatePath("/admin/products");
 }
 
+// Hard delete. Admin-only, and blocked when the product appears on past orders
+// (those keep a title/price snapshot but still FK-reference the product).
+export async function deleteProduct(formData: FormData) {
+  const me = await requireRole("admin");
+  if (!me) throw new Error("Only admins can delete products.");
+  const id = String(formData.get("id"));
+
+  const orderRefs = await prisma.orderItem.count({ where: { productId: id } });
+  if (orderRefs > 0) {
+    throw new Error(
+      "This product is on past orders, so it can't be deleted. Archive it instead.",
+    );
+  }
+  const product = await prisma.product.findUnique({ where: { id } });
+  // Images + options cascade on delete; cart lines do not, so clear them first.
+  await prisma.cartItem.deleteMany({ where: { productId: id } });
+  await prisma.product.delete({ where: { id } });
+
+  await logActivity({
+    actorId: me.id,
+    actorName: me.username,
+    action: "product.delete",
+    summary: `${me.username} deleted product "${product?.title ?? id}"`,
+  });
+  revalidatePath("/admin/products");
+  revalidatePath("/");
+  redirect("/admin/products");
+}
+
 export async function deleteProductImage(formData: FormData) {
   if (!(await requireAdmin())) throw new Error("Not authorized");
   const id = String(formData.get("id"));
   await prisma.productImage.delete({ where: { id } });
   revalidatePath("/admin/products");
+}
+
+const optionSchema = z.object({
+  productId: z.string().min(1),
+  label: z.string().min(1).max(60),
+  slots: z.coerce.number().int().min(1).max(20),
+  required: z.coerce.boolean().default(false),
+});
+
+export async function addProductOption(formData: FormData) {
+  if (!(await requireAdmin())) throw new Error("Not authorized");
+  const parsed = optionSchema.parse(Object.fromEntries(formData));
+  // Multi-value field: which palette colours are allowed (empty = all).
+  const allowedColorIds = formData
+    .getAll("allowedColorIds")
+    .map(String)
+    .filter(Boolean);
+  const last = await prisma.productOption.findFirst({
+    where: { productId: parsed.productId },
+    orderBy: { sortOrder: "desc" },
+  });
+  await prisma.productOption.create({
+    data: {
+      productId: parsed.productId,
+      label: parsed.label,
+      slots: parsed.slots,
+      required: parsed.required,
+      type: "color",
+      sortOrder: (last?.sortOrder ?? -1) + 1,
+      allowedColors: { connect: allowedColorIds.map((id) => ({ id })) },
+    },
+  });
+  const product = await prisma.product.findUnique({
+    where: { id: parsed.productId },
+  });
+  revalidatePath(`/admin/products/${parsed.productId}`);
+  if (product) revalidatePath(`/product/${product.slug}`);
+}
+
+// Replace an option's allowed-colours set (empty = all available colours).
+export async function setOptionColors(formData: FormData) {
+  if (!(await requireAdmin())) throw new Error("Not authorized");
+  const optionId = String(formData.get("optionId"));
+  const allowedColorIds = formData
+    .getAll("allowedColorIds")
+    .map(String)
+    .filter(Boolean);
+  const option = await prisma.productOption.update({
+    where: { id: optionId },
+    data: { allowedColors: { set: allowedColorIds.map((id) => ({ id })) } },
+  });
+  const product = await prisma.product.findUnique({
+    where: { id: option.productId },
+  });
+  revalidatePath(`/admin/products/${option.productId}`);
+  if (product) revalidatePath(`/product/${product.slug}`);
+}
+
+export async function deleteProductOption(formData: FormData) {
+  if (!(await requireAdmin())) throw new Error("Not authorized");
+  const id = String(formData.get("id"));
+  const option = await prisma.productOption.delete({ where: { id } });
+  const product = await prisma.product.findUnique({
+    where: { id: option.productId },
+  });
+  revalidatePath(`/admin/products/${option.productId}`);
+  if (product) revalidatePath(`/product/${product.slug}`);
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCart } from "@/lib/cart";
 import { submitCheckout } from "@/lib/order-actions";
 import { formatAud } from "@/lib/money";
+import { SelectionSummary } from "@/components/SelectionSummary";
 
 export default async function CheckoutPage() {
   const cart = await getCart();
@@ -76,30 +77,18 @@ export default async function CheckoutPage() {
 
           <fieldset className="card">
             <legend className="caption px-xs">Getting it to you</legend>
-            <div className="flex flex-col gap-xs">
-              <label className="inline-flex items-center gap-sm text-body">
-                <input
-                  type="radio"
-                  name="deliveryMethod"
-                  value="collect"
-                  defaultChecked
-                />
-                Collect at school
-              </label>
-              <label className="inline-flex items-center gap-sm text-body">
-                <input type="radio" name="deliveryMethod" value="deliver" />
-                Deliver to a home address
-              </label>
+            <div className="flex items-start gap-sm text-body">
+              <span className="mt-0.5 text-accent-magenta">📍</span>
+              <div>
+                <p className="font-semibold">Pickup only — Delacombe</p>
+                <p className="text-body-sm text-ink/70 mt-xs">
+                  Once your order is ready we&rsquo;ll send pickup instructions
+                  to your grown-up&rsquo;s email.
+                </p>
+              </div>
             </div>
-            <label className="field-label mt-md" htmlFor="deliveryAddress">
-              Delivery address (if delivering)
-            </label>
-            <textarea
-              id="deliveryAddress"
-              name="deliveryAddress"
-              className="field-textarea"
-              rows={3}
-            />
+            {/* hidden so the server action still receives the field */}
+            <input type="hidden" name="deliveryMethod" value="collect" />
           </fieldset>
 
           <fieldset className="card">
@@ -128,8 +117,14 @@ export default async function CheckoutPage() {
               <li key={i.id} className="py-xs flex justify-between gap-md">
                 <span>
                   {i.quantity} × {i.product.title}
+                  <SelectionSummary
+                    selections={i.selections}
+                    className="mt-xxs flex flex-col gap-xxs"
+                  />
                 </span>
-                <span>{formatAud(i.product.priceCents * i.quantity)}</span>
+                <span className="whitespace-nowrap">
+                  {formatAud(i.product.priceCents * i.quantity)}
+                </span>
               </li>
             ))}
           </ul>

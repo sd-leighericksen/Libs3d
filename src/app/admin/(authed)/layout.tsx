@@ -10,6 +10,7 @@ export default async function AdminLayout({
   const session = await auth();
   const username = session?.user?.username;
   if (!username) redirect("/admin/login");
+  const isAdmin = session?.user?.role === "admin";
 
   return (
     <div className="container-content py-xl">
@@ -26,6 +27,14 @@ export default async function AdminLayout({
         <Link href="/admin/categories" className="text-body-sm hover:text-accent-magenta">
           Categories
         </Link>
+        <Link href="/admin/colors" className="text-body-sm hover:text-accent-magenta">
+          Colours
+        </Link>
+        {isAdmin && (
+          <Link href="/admin/activity" className="text-body-sm hover:text-accent-magenta">
+            Activity
+          </Link>
+        )}
         <Link href="/admin/settings" className="text-body-sm hover:text-accent-magenta">
           Settings
         </Link>

@@ -6,6 +6,8 @@
   :root {
     --font-sans: "Inter", "SF Pro Display", system-ui, sans-serif;
     --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    /* Accent colour channels; overridden inline from Settings.accentColor. */
+    --accent-rgb: 255 45 109;
   }
 
   html,

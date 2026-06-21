@@ -2,9 +2,13 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { slugify } from "@/lib/slug";
+import { requireAdmin } from "@/lib/auth";
+import { logActivity } from "@/lib/activity";
 
 async function createCategory(formData: FormData) {
   "use server";
+  const me = await requireAdmin();
+  if (!me) throw new Error("Not authorized");
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim() || null;
   if (!name) return;
@@ -15,6 +19,12 @@ async function createCategory(formData: FormData) {
   }
   await prisma.category.create({
     data: { name, slug, description },
+  });
+  await logActivity({
+    actorId: me.id,
+    actorName: me.username,
+    action: "category.create",
+    summary: `${me.username} created category "${name}"`,
   });
   revalidatePath("/admin/categories");
   revalidatePath("/");

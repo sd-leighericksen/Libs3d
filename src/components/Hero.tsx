@@ -1,0 +1,191 @@
+"use client";
+
+import { useRef } from "react";
+import { useGSAP } from "@gsap/react";
+import { gsap, ScrollTrigger, prefersReducedMotion, EASE } from "@/lib/gsap";
+import { PillLink } from "@/components/ui/Pill";
+import { Magnetic } from "@/components/motion/Magnetic";
+import { AnimatedHeadline } from "@/components/motion/AnimatedHeadline";
+
+type HeroImage = { url: string; alt: string };
+
+// Brand block fallbacks so the band always fills, even with few product images.
+const FALLBACK = [
+  "bg-block-lime",
+  "bg-block-lilac",
+  "bg-block-coral",
+  "bg-block-mint",
+  "bg-block-pink",
+];
+
+/**
+ * Full-bleed, GSAP-driven hero. A full-width band of product imagery sits behind
+ * a dark scrim; the band reacts to pointer (parallax depth) and scroll (drift +
+ * scale), while the headline rises in via SplitText. Reduced-motion safe.
+ */
+export function Hero({ images }: { images: HeroImage[] }) {
+  const root = useRef<HTMLElement>(null);
+  const band = useRef<HTMLDivElement>(null);
+
+  // Always render 5 tiles: real images first, brand blocks for the rest.
+  const tiles = Array.from({ length: 5 }).map((_, i) => images[i] ?? null);
+
+  useGSAP(
+    () => {
+      const section = root.current;
+      const bandEl = band.current;
+      if (!section || !bandEl) return;
+
+      const tileEls = gsap.utils.toArray<HTMLElement>(".hero-tile");
+
+      if (prefersReducedMotion()) {
+        gsap.set(tileEls, { clearProps: "all" });
+        return;
+      }
+
+      // Entrance: tiles wipe up from a clip, slightly staggered.
+      gsap.from(tileEls, {
+        yPercent: 18,
+        scale: 1.12,
+        autoAlpha: 0,
+        duration: 1.1,
+        ease: EASE,
+        stagger: 0.08,
+      });
+
+      // Lede + CTAs rise in after the headline.
+      gsap.from(".hero-fade", {
+        y: 22,
+        autoAlpha: 0,
+        duration: 0.8,
+        ease: EASE,
+        delay: 0.35,
+        stagger: 0.12,
+      });
+
+      // Pointer parallax — band shifts opposite the cursor; tiles at varying depth.
+      const xTo = gsap.quickTo(bandEl, "x", { duration: 0.8, ease: "power3.out" });
+      const yTo = gsap.quickTo(bandEl, "y", { duration: 0.8, ease: "power3.out" });
+      tileEls.forEach((t, i) =>
+        gsap.set(t, { transformOrigin: "center", zIndex: i }),
+      );
+      const depthTweens = tileEls.map((t) => ({
+        x: gsap.quickTo(t, "x", { duration: 1, ease: "power3.out" }),
+        depth: (gsap.utils.random(0.4, 1.4) as number),
+      }));
+
+      const onMove = (e: PointerEvent) => {
+        const r = section.getBoundingClientRect();
+        const dx = (e.clientX - (r.left + r.width / 2)) / r.width;
+        const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
+        xTo(dx * -40);
+        yTo(dy * -24);
+        depthTweens.forEach((d) => d.x(dx * -30 * d.depth));
+      };
+      section.addEventListener("pointermove", onMove);
+
+      // Scroll drift + zoom on the whole band.
+      const st = gsap.to(bandEl, {
+        yPercent: 14,
+        scale: 1.08,
+        ease: "none",
+        scrollTrigger: {
+          trigger: section,
+          start: "top top",
+          end: "bottom top",
+          scrub: true,
+        },
+      });
+
+      return () => {
+        section.removeEventListener("pointermove", onMove);
+        st.scrollTrigger?.kill();
+        st.kill();
+        ScrollTrigger.refresh();
+      };
+    },
+    { scope: root },
+  );
+
+  return (
+    <section
+      ref={root}
+      className="relative isolate flex min-h-[88vh] items-center overflow-hidden bg-ink text-canvas"
+    >
+      {/* Image band */}
+      <div
+        ref={band}
+        aria-hidden
+        className="absolute inset-0 -z-10 flex will-change-transform"
+        style={{ width: "112%", left: "-6%" }}
+      >
+        {tiles.map((img, i) =>
+          img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              key={i}
+              src={img.url}
+              alt=""
+              className="hero-tile h-full flex-1 object-cover"
+            />
+          ) : (
+            <div
+              key={i}
+              className={`hero-tile h-full flex-1 ${FALLBACK[i % FALLBACK.length]}`}
+            />
+          ),
+        )}
+      </div>
+
+      {/* Scrim for legibility */}
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-gradient-to-r from-ink via-ink/80 to-ink/30"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 bg-gradient-to-t from-ink/90 via-transparent to-ink/40"
+      />
+
+      {/* Foreground content */}
+      <div className="container-content py-section">
+        <div className="max-w-[44rem]">
+          <div className="eyebrow mb-md text-accent-magenta">Libs3d</div>
+          <AnimatedHeadline
+            text="Small 3D-printed things, made by a kid."
+            by="chars"
+            className="text-[44px] sm:text-[64px] md:text-[78px] leading-[1.02] tracking-tight font-semibold"
+          />
+          <p className="hero-fade mt-lg max-w-[42ch] text-body-lg text-canvas/80">
+            Pick what you like. Your grown-up gets an email to say yes and pay.
+            Then we print it.
+          </p>
+          <div className="hero-fade mt-xl flex flex-wrap gap-sm">
+            <Magnetic strength={0.4}>
+              <PillLink href="#shop">Browse the shop</PillLink>
+            </Magnetic>
+            <Magnetic strength={0.3}>
+              <PillLink
+                href="/how-it-works"
+                variant="secondary"
+                className="bg-transparent text-canvas border-canvas/30 hover:bg-canvas/10"
+              >
+                How it works
+              </PillLink>
+            </Magnetic>
+          </div>
+        </div>
+      </div>
+
+      {/* Marquee strip */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 bottom-0 border-t border-canvas/15 bg-ink/40 py-sm backdrop-blur-sm"
+      >
+        <div className="container-content caption text-canvas/60">
+          3D printed · made by a kid · grown-up approves · then we print
+        </div>
+      </div>
+    </section>
+  );
+}

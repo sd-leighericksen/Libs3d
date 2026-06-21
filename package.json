@@ -5,7 +5,7 @@
   "scripts": {
     "predev": "node scripts/check-db.mjs && prisma migrate deploy && prisma db seed",
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "db:reset": "prisma migrate reset --force",
@@ -18,12 +18,14 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.658.0",
     "@aws-sdk/s3-request-presigner": "^3.658.0",
+    "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^3.9.0",
     "@prisma/client": "^5.20.0",
     "@react-three/drei": "^10.0.0",
     "@react-three/fiber": "^9.0.0",
     "argon2": "^0.41.1",
     "clsx": "^2.1.1",
+    "gsap": "^3.15.0",
     "next": "^15.0.3",
     "next-auth": "5.0.0-beta.25",
     "postmark": "^4.0.5",

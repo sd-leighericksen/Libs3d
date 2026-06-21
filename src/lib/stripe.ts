@@ -6,7 +6,7 @@ import Stripe from "stripe";
 const key = process.env.STRIPE_SECRET_KEY;
 const realStripe =
   key && !key.startsWith("sk_test_your") && key.length > 20
-    ? new Stripe(key, { apiVersion: "2024-09-30.acacia" })
+    ? new Stripe(key, { apiVersion: "2025-02-24.acacia" })
     : null;
 
 export function stripeEnabled() {

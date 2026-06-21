@@ -1,16 +1,18 @@
 // All transactional email copy lives here, in the voice from §11 of the brief.
 import { appBaseUrl } from "../email";
 import { formatAud } from "../money";
+import { selectionsToText } from "../product-options";
 import type { Order, OrderItem } from "@prisma/client";
 
 type OrderForEmail = Order & { items: OrderItem[] };
 
 const itemLines = (items: OrderItem[]) =>
   items
-    .map(
-      (i) =>
-        `  • ${i.quantity} × ${i.titleSnapshot} — ${formatAud(i.unitPriceCents * i.quantity)}`,
-    )
+    .map((i) => {
+      const opts = selectionsToText(i.selections);
+      const main = `  • ${i.quantity} × ${i.titleSnapshot} — ${formatAud(i.unitPriceCents * i.quantity)}`;
+      return opts ? `${main}\n      ${opts}` : main;
+    })
     .join("\n");
 
 export function parentOrderReceived(order: OrderForEmail, storeName: string) {
@@ -45,7 +47,7 @@ export function adminNewOrder(order: OrderForEmail, storeName: string) {
 
 Buyer: ${order.buyerFirstName}
 Parent: ${order.parentFirstName} <${order.parentEmail}>
-Delivery: ${order.deliveryMethod}${order.deliveryAddress ? `\nAddress: ${order.deliveryAddress}` : ""}
+Delivery: Pickup — Delacombe (instructions sent when ready)
 
 Items:
 ${itemLines(order.items)}
@@ -140,9 +142,7 @@ The ${storeName} team`,
 }
 
 export function parentFulfilled(order: OrderForEmail, storeName: string) {
-  const note = order.deliveryMethod === "collect"
-    ? "It's ready to collect at school."
-    : "It's on its way to you.";
+  const note = "It's ready to collect in Delacombe. We'll send you the pickup instructions separately.";
   return {
     subject: `${order.buyerFirstName}'s order is ready!`,
     textBody: `Hi ${order.parentFirstName},

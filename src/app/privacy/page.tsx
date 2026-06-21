@@ -10,6 +10,21 @@ export default function Privacy() {
         </p>
       </div>
 
+      <div className="mt-xl card-accent">
+        <span className="tick">About this platform</span>
+        <p className="text-body mt-xs">
+          This website was built by Baxter E with the help of his Dad and the
+          team at Stoke Design Ballarat. Feel free to send any questions or
+          enquiries in regards to how the platform works, its safety or how
+          payment works to{" "}
+          <a href="mailto:leigh@stokedesign.co" className="text-accent-magenta underline">
+            leigh@stokedesign.co
+          </a>{" "}
+          — this is a closely monitored platform by adults to help a 10 year
+          old start his first ecommerce store as safely as possible.
+        </p>
+      </div>
+
       <div className="mt-xl flex flex-col gap-lg text-body text-ink/80">
         <div>
           <h2 className="text-headline text-ink">About the buyer (the kid)</h2>

@@ -3,7 +3,8 @@
 // products don't rewrite historical orders.
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -28,13 +29,37 @@ enum DeliveryMethod {
   deliver
 }
 
+enum ProductOptionType {
+  color
+}
+
+enum AdminRole {
+  admin // full access: users, settings, deletes
+  shopkeeper // manage products, categories, colours, orders
+}
+
 model AdminUser {
-  id           String   @id @default(cuid())
-  username     String   @unique
+  id           String    @id @default(cuid())
+  username     String    @unique
   passwordHash String
-  createdAt    DateTime @default(now())
+  role         AdminRole @default(admin)
+  createdAt    DateTime  @default(now())
 
   events OrderEvent[]
+}
+
+// Append-only audit trail of meaningful admin/system actions (logins, product
+// and category edits, order transitions, user changes). actorName is snapshotted
+// so the log stays readable even if the user is later removed.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorName String   @default("system")
+  action    String
+  summary   String
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Category {
@@ -69,6 +94,42 @@ model Product {
   images    ProductImage[]
   cartItems CartItem[]
   orderItems OrderItem[]
+  options   ProductOption[]
+}
+
+// Shared filament palette. One global list admin manages; every product's
+// colour option draws from it. Snapshots of name+hex are frozen onto cart/order
+// lines, so archiving a colour never corrupts a historical order.
+model ColorOption {
+  id         String    @id @default(cuid())
+  name       String    @unique
+  hex        String
+  sortOrder  Int       @default(0)
+  available  Boolean   @default(true)
+  archivedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  // Options that restrict their palette to this colour (implicit join table).
+  productOptions ProductOption[] @relation("ProductOptionColors")
+}
+
+// A configurable choice attached to a product. "Keystone colours" is a single
+// option with slots = 9 (renders nine colour pickers); "Base colour" has slots = 1.
+model ProductOption {
+  id        String            @id @default(cuid())
+  productId String
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label     String
+  type      ProductOptionType @default(color)
+  slots     Int               @default(1)
+  required  Boolean           @default(true)
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+
+  // Subset of the palette allowed for this option. Empty = all available colours.
+  allowedColors ColorOption[] @relation("ProductOptionColors")
+
+  @@index([productId])
 }
 
 model ProductImage {
@@ -89,14 +150,19 @@ model Cart {
 }
 
 model CartItem {
-  id        String  @id @default(cuid())
-  cartId    String
-  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-  quantity  Int
+  id          String  @id @default(cuid())
+  cartId      String
+  cart        Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  quantity    Int
+  // Chosen option values, snapshotted with colour name + hex. Empty for
+  // products without options. optionsHash is a deterministic signature so the
+  // same product with different picks becomes a separate cart line.
+  selections  Json?
+  optionsHash String  @default("")
 
-  @@unique([cartId, productId])
+  @@unique([cartId, productId, optionsHash])
 }
 
 model Order {
@@ -131,6 +197,8 @@ model OrderItem {
   titleSnapshot   String
   unitPriceCents  Int
   quantity        Int
+  // Frozen snapshot of chosen options (label + colour name + hex per slot).
+  selections      Json?
 }
 
 model OrderEvent {
@@ -152,4 +220,5 @@ model Settings {
   maxDistinctItemsPerOrder Int     @default(10)
   storeName                String  @default("Libs3d")
   storeContactEmail        String  @default("hello@example.com")
+  accentColor              String  @default("#ff2d6d")
 }

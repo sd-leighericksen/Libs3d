@@ -75,6 +75,24 @@ export default function HowItWorks() {
         </p>
       </section>
 
+      <section>
+        <div className="section-head">
+          <span className="tick">About this platform</span>
+          <h2>Who built this, and who to ask.</h2>
+        </div>
+        <p className="text-body max-w-[65ch] text-ink/80">
+          This website was built by Baxter E with the help of his Dad and the
+          team at Stoke Design Ballarat. Feel free to send any questions or
+          enquiries in regards to how the platform works, its safety or how
+          payment works to{" "}
+          <a href="mailto:leigh@stokedesign.co" className="text-accent-magenta underline">
+            leigh@stokedesign.co
+          </a>{" "}
+          — this is a closely monitored platform by adults to help a 10 year
+          old start his first ecommerce store as safely as possible.
+        </p>
+      </section>
+
       <section className="card-accent">
         <span className="tick">Ready?</span>
         <h2 className="text-headline mt-xs">Have a look around.</h2>
