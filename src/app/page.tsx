@@ -20,14 +20,10 @@ export default async function HomePage() {
     }),
   ]);
 
-  const heroImages = featured.flatMap((p) =>
-    p.images[0] ? [{ url: p.images[0].url, alt: p.images[0].alt }] : [],
-  );
-
   return (
     <>
       {/* Full-bleed GSAP hero */}
-      <Hero images={heroImages} />
+      <Hero />
 
       <div className="container-content py-section stack-section">
       {/* Featured products */}

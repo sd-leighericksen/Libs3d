@@ -7,28 +7,14 @@ import { PillLink } from "@/components/ui/Pill";
 import { Magnetic } from "@/components/motion/Magnetic";
 import { AnimatedHeadline } from "@/components/motion/AnimatedHeadline";
 
-type HeroImage = { url: string; alt: string };
-
-// Brand block fallbacks so the band always fills, even with few product images.
-const FALLBACK = [
-  "bg-block-lime",
-  "bg-block-lilac",
-  "bg-block-coral",
-  "bg-block-mint",
-  "bg-block-pink",
-];
-
 /**
- * Full-bleed, GSAP-driven hero. A full-width band of product imagery sits behind
- * a dark scrim; the band reacts to pointer (parallax depth) and scroll (drift +
- * scale), while the headline rises in via SplitText. Reduced-motion safe.
+ * Full-bleed, GSAP-driven hero. A full-width looping video sits behind a dark
+ * scrim; the band reacts to pointer (parallax) and scroll (drift + scale),
+ * while the headline rises in via SplitText. Reduced-motion safe.
  */
-export function Hero({ images }: { images: HeroImage[] }) {
+export function Hero() {
   const root = useRef<HTMLElement>(null);
   const band = useRef<HTMLDivElement>(null);
-
-  // Always render 5 tiles: real images first, brand blocks for the rest.
-  const tiles = Array.from({ length: 5 }).map((_, i) => images[i] ?? null);
 
   useGSAP(
     () => {
@@ -36,21 +22,18 @@ export function Hero({ images }: { images: HeroImage[] }) {
       const bandEl = band.current;
       if (!section || !bandEl) return;
 
-      const tileEls = gsap.utils.toArray<HTMLElement>(".hero-tile");
-
       if (prefersReducedMotion()) {
-        gsap.set(tileEls, { clearProps: "all" });
+        gsap.set(bandEl, { clearProps: "all" });
         return;
       }
 
-      // Entrance: tiles wipe up from a clip, slightly staggered.
-      gsap.from(tileEls, {
+      // Entrance: band wipes up from a clip.
+      gsap.from(bandEl, {
         yPercent: 18,
         scale: 1.12,
         autoAlpha: 0,
         duration: 1.1,
         ease: EASE,
-        stagger: 0.08,
       });
 
       // Lede + CTAs rise in after the headline.
@@ -63,16 +46,9 @@ export function Hero({ images }: { images: HeroImage[] }) {
         stagger: 0.12,
       });
 
-      // Pointer parallax — band shifts opposite the cursor; tiles at varying depth.
+      // Pointer parallax — band shifts opposite the cursor.
       const xTo = gsap.quickTo(bandEl, "x", { duration: 0.8, ease: "power3.out" });
       const yTo = gsap.quickTo(bandEl, "y", { duration: 0.8, ease: "power3.out" });
-      tileEls.forEach((t, i) =>
-        gsap.set(t, { transformOrigin: "center", zIndex: i }),
-      );
-      const depthTweens = tileEls.map((t) => ({
-        x: gsap.quickTo(t, "x", { duration: 1, ease: "power3.out" }),
-        depth: (gsap.utils.random(0.4, 1.4) as number),
-      }));
 
       const onMove = (e: PointerEvent) => {
         const r = section.getBoundingClientRect();
@@ -80,7 +56,6 @@ export function Hero({ images }: { images: HeroImage[] }) {
         const dy = (e.clientY - (r.top + r.height / 2)) / r.height;
         xTo(dx * -40);
         yTo(dy * -24);
-        depthTweens.forEach((d) => d.x(dx * -30 * d.depth));
       };
       section.addEventListener("pointermove", onMove);
 
@@ -112,29 +87,21 @@ export function Hero({ images }: { images: HeroImage[] }) {
       ref={root}
       className="relative isolate flex min-h-[88vh] items-center overflow-hidden bg-ink text-canvas"
     >
-      {/* Image band */}
+      {/* Video band */}
       <div
         ref={band}
         aria-hidden
-        className="absolute inset-0 -z-10 flex will-change-transform"
+        className="absolute inset-0 -z-10 will-change-transform"
         style={{ width: "112%", left: "-6%" }}
       >
-        {tiles.map((img, i) =>
-          img ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={img.url}
-              alt=""
-              className="hero-tile h-full flex-1 object-cover"
-            />
-          ) : (
-            <div
-              key={i}
-              className={`hero-tile h-full flex-1 ${FALLBACK[i % FALLBACK.length]}`}
-            />
-          ),
-        )}
+        <video
+          src="/hero-prod.mp4"
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="h-full w-full object-cover"
+        />
       </div>
 
       {/* Scrim for legibility */}
